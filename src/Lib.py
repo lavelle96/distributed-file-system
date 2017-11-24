@@ -1,15 +1,18 @@
 import requests
 import config
+from format import format_file_req
+import json
 
-def read(filename, server_port):
+def read(file_name, server_port):
     """
     Allows user to read file of a particular name
     Will involve sending a get request to the fileservers api
     """
-    url = 'http://localhost:' + server_port
-    print(requests.get(url).content)
+    url = format_file_req(file_name, server_port)
+    response =  json.loads(requests.get(url).content.decode())
+    return response
 
-def write(filename, file):
+def write(file_name, file):
     """Allows user to write to file of a particular name"""
 
 
