@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_restful import Api, Resource
+from flask_restful import Api, Resource, abort
 import requests
 from format import format_file_req
 import sys
@@ -27,15 +27,17 @@ class Directory_API(Resource):
     def get(self, file_name):
         if file_name in FILE_MAP.keys() and DIR_MAP[FILE_MAP[file_name]] == True:
             url = format_file_req(file_name, ACTIVE_NODES[FILE_MAP[file_name]])
-            print(url)
-            response1 = json.loads(requests.get(url).content.decode())
-            return response1
+            #Reformat so that its passed in python map object form and not twice changed into string form
+            response = json.loads(requests.get(url).content.decode())
+            return response
+        else:
+            abort(404)
             
 
 
 class Node_Init_API(Resource):
     def get(self, port_number):
-        
+        print("Request received from port: ", port_number)
         for key in ACTIVE_NODES:
             if ACTIVE_NODES[key] == port_number:
                 response = {"file_dir": key}

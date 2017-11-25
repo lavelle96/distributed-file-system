@@ -1,2 +1,2 @@
-FILE_SERVER_PORT = 5000
-CLIENT_PORT = 5001
+DIR_SERVER_PORT = 5002
+#Note:: this exists in conig.cfg file aswell
