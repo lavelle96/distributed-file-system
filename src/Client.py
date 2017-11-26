@@ -2,4 +2,8 @@ import Lib
 import sys
 
 
-file = Lib.read_file("2.2")
+Lib.read_file("2.2")
+input("Press enter when you want to write this back")
+
+
+Lib.write_file("2.2")

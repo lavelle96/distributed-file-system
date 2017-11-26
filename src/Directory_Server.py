@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Api, Resource, abort
 import requests
 from format import format_file_req
@@ -28,11 +28,28 @@ class Directory_API(Resource):
         if file_name in FILE_MAP.keys() and DIR_MAP[FILE_MAP[file_name]] == True:
             url = format_file_req(file_name, ACTIVE_NODES[FILE_MAP[file_name]])
             #Reformat so that its passed in python map object form and not twice changed into string form
+            
             response = json.loads(requests.get(url).content.decode())
+            print("Sending this response on: ", response)
             return response
         else:
             abort(404)
+
+    def post(self, file_name):
+        """If file exists, route it on to the correct server"""
+        print('post request received')
+        if file_name in FILE_MAP.keys() and DIR_MAP[FILE_MAP[file_name]] == True:
+            url = format_file_req(file_name, ACTIVE_NODES[FILE_MAP[file_name]])
             
+            print ("Is it json: ", request.is_json)
+            content = request.get_json()
+            print ("Content: ", content)
+            headers =  {'content-type': 'application/json'}
+            response = json.loads(requests.post(url, data = request.data, headers = headers).content.decode())
+            return response
+        else:
+            print("File doesnt exist or is not on one of our servers")
+            abort(404)
 
 
 class Node_Init_API(Resource):

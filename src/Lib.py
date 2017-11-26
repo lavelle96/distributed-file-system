@@ -14,21 +14,29 @@ def read_file(file_name):
     url = format_file_req(file_name, cf.DIR_SERVER_PORT)
     response =  json.loads(requests.get(url).content.decode())
     print(response)
-    f = open('temp/'+file_name, 'w+')
+    f = open('temp/'+file_name, 'w')
     f.write(response["file_content"])
+    f.close()
     #The following line is specific to linux machines
     os.system('xdg-open '+ 'temp/'+file_name)
+    return 
     
     
 
-def write_file(file_name, file):
+def write_file(file_name):
     """Allows user to write to file of a particular name"""
     url = format_file_req(file_name, cf.DIR_SERVER_PORT)
+    f = open('temp/'+file_name, 'r')
     data = {
         "file_name": file_name,
-        "file_content": file.read()
+        "file_content": f.read()
     }
-    response = requests.post(url, data)
+    print("Sending: ", data, " to ", url)
+    headers = {'content-type': 'application/json'}
+
+    response = requests.post(url, data = json.dumps(data), headers = headers)
+
+    print("Response to post: ", response)
 
 
 def open_file(filename):
