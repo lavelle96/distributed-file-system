@@ -12,16 +12,29 @@ def read_file(file_name):
     Will involve sending a get request to the fileservers api
     """
     #Check if cached
-    #Get file server port
-    url = format_file_req(file_name, cf.DIR_SERVER_PORT)
-    response =  json.loads(requests.get(url).content.decode())
-    file_server_port = response['file_server_port']
+    url = format_file_req(file_name, cf.CACHE_SERVER_PORT)
+    response = json.loads(requests.get(url).content.decode())
+    if response['cache_miss'] == False:
+        file_content = response['file_content']
+    else:
+        #Get file server port
+        url = format_file_req(file_name, cf.DIR_SERVER_PORT)
+        response =  json.loads(requests.get(url).content.decode())
+        file_server_port = response['file_server_port']
 
-    #Get file from file server
-    url = format_file_req(file_name, file_server_port)
-    print('sending file server request to: ', url)
-    response =  json.loads(requests.get(url).content.decode())
-    file_content = response["file_content"]
+        #Get file from file server
+        url = format_file_req(file_name, file_server_port)
+        response =  json.loads(requests.get(url).content.decode())
+        file_content = response["file_content"]
+
+        #post to the cache
+        url = format_file_req(file_name, cf.CACHE_SERVER_PORT)
+        data = {
+            'file_content': file_content
+        }
+        response = requests.post(url, data=json.dumps(data), headers=cf.JSON_HEADER)
+        print('cache response: ', response)
+
     f = open('temp/'+file_name, 'w')
     f.write(file_content)
     f.close()
