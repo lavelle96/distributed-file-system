@@ -51,19 +51,20 @@ def write_file(file_name):
     response =  json.loads(requests.get(url).content.decode())
     file_server_port = response['file_server_port']
 
-
+    #post to file server
     url = format_file_req(file_name, file_server_port)
     f = open('temp/'+file_name, 'r')
+    file_content = f.read()
     data = {
         "file_name": file_name,
-        "file_content": f.read()
+        "file_content": file_content
     }
-    print("Sending: ", data, " to ", url)
-    headers = {'content-type': 'application/json'}
-
+    headers = cf.JSON_HEADER
     response = requests.post(url, data = json.dumps(data), headers = headers)
 
-    print("Response to post: ", response.content.decode())
+    #update cache
+    url = format_file_req(file_name, cf.CACHE_SERVER_PORT)
+    response = requests.post(url, json.dumps(data), headers=headers)
 
 
 def open_file(filename):
