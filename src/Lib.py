@@ -11,11 +11,19 @@ def read_file(file_name):
     Allows user to read file of a particular name
     Will involve sending a get request to the fileservers api
     """
+    #Check if cached
+    #Get file server port
     url = format_file_req(file_name, cf.DIR_SERVER_PORT)
     response =  json.loads(requests.get(url).content.decode())
-    print(response)
+    file_server_port = response['file_server_port']
+
+    #Get file from file server
+    url = format_file_req(file_name, file_server_port)
+    print('sending file server request to: ', url)
+    response =  json.loads(requests.get(url).content.decode())
+    file_content = response["file_content"]
     f = open('temp/'+file_name, 'w')
-    f.write(response["file_content"])
+    f.write(file_content)
     f.close()
     #The following line is specific to linux machines
     os.system('xdg-open '+ 'temp/'+file_name)
@@ -25,7 +33,13 @@ def read_file(file_name):
 
 def write_file(file_name):
     """Allows user to write to file of a particular name"""
+    #Get file server port from directory server
     url = format_file_req(file_name, cf.DIR_SERVER_PORT)
+    response =  json.loads(requests.get(url).content.decode())
+    file_server_port = response['file_server_port']
+
+
+    url = format_file_req(file_name, file_server_port)
     f = open('temp/'+file_name, 'r')
     data = {
         "file_name": file_name,
@@ -36,7 +50,7 @@ def write_file(file_name):
 
     response = requests.post(url, data = json.dumps(data), headers = headers)
 
-    print("Response to post: ", response)
+    print("Response to post: ", response.content.decode())
 
 
 def open_file(filename):

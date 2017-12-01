@@ -30,7 +30,6 @@ def update_file(file_name, path, file_content):
 def delete_file(file_name, path):
     try:
         os.remove(path + '/' + file_name)
-        print('file deleted')
         return True
     except:
         return False
