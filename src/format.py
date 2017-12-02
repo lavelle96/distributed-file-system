@@ -8,3 +8,6 @@ def format_node_req(port_number, dir_port_number):
     url = 'http://localhost:' + str(dir_port_number) + '/api/node/' + str(port_number)
     return url
 
+def format_lock_req(file_name, uuid, lock_port_number):
+    url = 'http://localhost:' + str(lock_port_number) + '/api/lock/' + file_name + '/' + str(uuid)
+    return url
