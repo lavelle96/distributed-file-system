@@ -5,6 +5,16 @@ from utils import get_file_read, update_file, delete_file
 from datetime import datetime
 import sys
 import os
+from pymongo import MongoClient
+client = MongoClient()
+db = client.cache_db
+file_timestamps = db.file_timestamps
+'''
+{
+    'name':
+    'timestamp':
+}
+'''
 
 app = Flask(__name__)
 api = Api(app)
@@ -13,18 +23,19 @@ api = Api(app)
 FILE_TIMESTAMP = {}
 
 def cache_is_full():
-    if len(FILE_TIMESTAMP) >= cf.CACHE_FILE_CAPACITY:
+    if file_timestamps.count() >= cf.CACHE_FILE_CAPACITY:
         return True
     return False
 
 def get_LRU_file():
     latest = datetime.now()
     latest_index = -1
-    for f in FILE_TIMESTAMP.keys():
-        if FILE_TIMESTAMP[f] < latest:
-            latest = FILE_TIMESTAMP[f]
-            latest_index = f
-    return latest_index
+    files = file_timestamps.find()
+    for element in files:
+        if element['timestamp'] < latest:
+            latest = element['timestamp']
+            file_name = element['name']
+    return file_name
 
 def clear_cache():
     file_list = os.listdir(cf.CACHE_FILE_PATH)
@@ -40,7 +51,15 @@ class Cache_API(Resource):
         if content == None:
             cache_miss = True
         else:
-            FILE_TIMESTAMP[file_name] = datetime.now()
+            file_timestamps.update_one(
+                {'name': file_name},
+                {
+                    '$set':{
+                        'name': file_name,
+                        'timestamp': datetime.now()                    }
+                },
+                upsert=True
+            )
             
         response = {
                 'cache_miss': cache_miss,
@@ -52,7 +71,7 @@ class Cache_API(Resource):
     def post(self, file_name):
         '''Adds file to cache, performed on reads, also updates a file in the cache if it exists,
         performed on writes'''
-        print('post received, cache size is: ', len(FILE_TIMESTAMP))
+        print('post received, cache size is: ', file_timestamps.count())
         if(not request.is_json):
             abort(400)
         data = request.json
@@ -61,16 +80,26 @@ class Cache_API(Resource):
         #check if the cache is full, if so, boot the most recently used
         #Create a the file in the cache
         #Add it to the timestamp map 
-        if not (file_name in FILE_TIMESTAMP.keys()):
-             if cache_is_full():
+
+        if file_timestamps.find_one({'name': file_name}) == None:
+            if cache_is_full():
                 LRU = get_LRU_file()
-                print('LRU file is: ', LRU, '; about to delete it')
-                del FILE_TIMESTAMP[LRU]
+                file_timestamps.remove({'name': LRU})
                 delete_file(LRU, cf.CACHE_FILE_PATH)
+
 
         try:
             update_file(file_name, cf.CACHE_FILE_PATH, file_content)
-            FILE_TIMESTAMP[file_name] = datetime.now()
+            file_timestamps.update_one(
+                {'name': file_name},
+                {
+                    '$set':{
+                        'name': file_name,
+                        'timestamp': datetime.now()
+                    }
+                },
+                upsert=True
+            )
         except:
             abort(403)
 
@@ -82,6 +111,7 @@ api.add_resource(Cache_API, '/api/files/<string:file_name>', endpoint= 'file')
 
 if __name__ == '__main__':
     clear_cache()
+    db.drop_collection('file_timestamps')
     server_port = int(sys.argv[1])
     app.run(host= '0.0.0.0', port = server_port, debug = True)
 
