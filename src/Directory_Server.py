@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, abort
 import requests
-from format import format_file_req
+from format import format_file_req, format_registry_req
 import sys
 import json
 from pymongo import MongoClient
+import config as cf
+
 
 client = MongoClient()
 db = client.dir_db
@@ -63,7 +65,6 @@ class Directory_API(Resource):
         response = {
             'file_server_port': node['port']
         }
-        print('response  :', response)
         return jsonify(response)
 
 class Node_Init_API(Resource):
@@ -72,7 +73,6 @@ class Node_Init_API(Resource):
         for i in query:
             print(i)
 
-        print("Request received from port: ", port_number)
         node = active_nodes.find_one({'port': port_number})
         if node != None:
             response = {"file_dir": node['dir']}
@@ -83,7 +83,6 @@ class Node_Init_API(Resource):
         d = dir_map.find_one({"supported": False})
         if d==None:
             return d
-        print('Updating directory: ', d['name'])
         dir_map.update_one(
             {"name": d['name']},
             {
@@ -115,4 +114,10 @@ if __name__ == '__main__':
     file_map.insert_many([FILE_11, FILE_12, FILE_21, FILE_22])
     dir_map.insert_many([DIR_1, DIR_2])
     server_port = int(sys.argv[1])
+
+    server_init_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
+    data = {
+        'dir_port': server_port
+    }
+    requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
     app.run(host= '0.0.0.0', port = server_port, debug = True)

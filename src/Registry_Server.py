@@ -19,8 +19,8 @@ directories = db.directories
 
 def get_response(port, dir_name):
     response = {
-        'dir_name': dir_name,
-        'dir_port': port
+        'dir_port': port,
+        'dir_name': dir_name
     }
     return jsonify(response)
 
@@ -28,7 +28,7 @@ class registry_API(Resource):
     def get(self, dir_name):
         '''Get port of directory name given'''
         servers = directories.find({'dir_name': dir_name})
-        if servers = None:
+        if servers == None:
             return get_response(-1, dir_name)
         min_load = None
         server_to_return = None
@@ -66,8 +66,14 @@ class registry_API(Resource):
             'dir_port': dir_port,
             'dir_load': 0
         }
+        directories.update_one(
+            {'dir_name': dir_name, 'dir_port': dir_port},
+            {
+                '$set':new_dir
+            },
+            upsert=True
+        )
         try:
-            directories.insert_one(new_dir)
             return jsonify({
                 'result': 'success'
             })
@@ -79,5 +85,6 @@ class registry_API(Resource):
 api.add_resource(registry_API, '/api/dirs/<string:dir_name>')
 
 if __name__ == '__main__':
+    db.drop_collection('directories')
     server_port = cf.REGISTRY_SERVER_PORT
     app.run('0.0.0.0', server_port)

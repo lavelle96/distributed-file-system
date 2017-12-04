@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, request, abort
+from flask import Flask, request, jsonify, abort
 from flask_restful import Api,Resource
 import config as cf
 from utils import get_file_read, update_file, delete_file, does_file_exist
@@ -6,6 +6,10 @@ from datetime import datetime
 import sys
 import os
 from pymongo import MongoClient
+import requests
+import json
+from format import format_registry_req
+
 client = MongoClient()
 db = client.cache_db
 file_timestamps = db.file_timestamps
@@ -113,5 +117,10 @@ if __name__ == '__main__':
     clear_cache()
     db.drop_collection('file_timestamps')
     server_port = int(sys.argv[1])
+    server_init_url = format_registry_req('cache_server', cf.REGISTRY_SERVER_PORT)
+    data = {
+        'dir_port': server_port
+    }
+    requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
     app.run(host= '0.0.0.0', port = server_port, debug = True)
 

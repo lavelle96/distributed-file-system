@@ -3,8 +3,9 @@ from flask_restful import inputs, reqparse, Api, fields, marshal, Resource, abor
 import requests
 from utils import get_file_read, get_file_write
 import sys
-from format import format_node_req
+from format import format_node_req, format_registry_req
 import json
+import config as cf
 
 
 """Server deployed by 'python File_Server.py [Server port] [Path where server files are stored (relative to src)]' """
@@ -56,7 +57,15 @@ api.add_resource(File_API, '/api/files/<string:file_name>', endpoint = 'file')
 if __name__ == '__main__':
     
     server_port = int(sys.argv[1])
-    dir_server_port = sys.argv[2]
+    server_init_url = format_registry_req('file_server', cf.REGISTRY_SERVER_PORT)
+    data = {
+        'dir_port': server_port
+    }
+    requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
+
+    dir_port_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
+    response = json.loads(requests.get(dir_port_url).content.decode())
+    dir_server_port = response['dir_port']
 
     url = format_node_req(server_port, dir_server_port)
     print("Sending the following request: ", url)

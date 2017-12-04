@@ -11,3 +11,7 @@ def format_node_req(port_number, dir_port_number):
 def format_lock_req(file_name, uuid, lock_port_number):
     url = 'http://localhost:' + str(lock_port_number) + '/api/lock/' + file_name + '/' + str(uuid)
     return url
+
+def format_registry_req(dir_name, reg_port_number):
+    url = 'http://localhost:' + str(reg_port_number) + '/api/dirs/' + dir_name
+    return url

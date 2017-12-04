@@ -3,11 +3,12 @@
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, abort
 import requests
-from format import format_file_req
+from format import format_file_req, format_registry_req
 import sys
 import json
 import uuid
 from pymongo import MongoClient
+import config as cf
 
 client = MongoClient()
 db = client.lock_db
@@ -178,5 +179,13 @@ api.add_resource(read_lock_API, '/api/lock/<string:file_name>/<string:id>')
 
 if __name__ == '__main__':
     db.drop_collection('file_locks')
+
+    
+
     server_port = int(sys.argv[1])
+    server_init_url = format_registry_req('lock_server', cf.REGISTRY_SERVER_PORT)
+    data = {
+        'dir_port': server_port
+    }
+    requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
     app.run(host= '0.0.0.0', port = server_port, debug = True)
