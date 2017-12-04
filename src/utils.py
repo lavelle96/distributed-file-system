@@ -33,3 +33,10 @@ def delete_file(file_name, path):
         return True
     except:
         return False
+
+def does_file_exist(file_name, path):
+    '''returns true if file exists at given path'''
+    file_list = os.listdir(path)
+    if file_name in file_list:
+        return True
+    return False

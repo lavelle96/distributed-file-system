@@ -60,3 +60,29 @@ print(response)
 url = format_lock_req('1.1', id3, cf.LOCK_SERVER_PORT)
 response = json.loads(requests.get(url).content.decode())
 print(response)
+
+#client 3 releases lock
+url = format_lock_req('1.1', id3, cf.LOCK_SERVER_PORT)
+response = json.loads(requests.post(url).content.decode())
+print(response)
+
+#client 1 gets lock
+url = format_lock_req('1.1', id1, cf.LOCK_SERVER_PORT)
+response = json.loads(requests.get(url).content.decode())
+print(response)
+
+#client 1 releases lock
+url = format_lock_req('1.1', id1, cf.LOCK_SERVER_PORT)
+response = json.loads(requests.post(url).content.decode())
+print(response)
+
+#Check if still successful after emptied
+#client 3 gets lock
+url = format_lock_req('1.1', id3, cf.LOCK_SERVER_PORT)
+response = json.loads(requests.get(url).content.decode())
+print(response)
+
+#client 3 releases lock
+url = format_lock_req('1.1', id3, cf.LOCK_SERVER_PORT)
+response = json.loads(requests.post(url).content.decode())
+print(response)

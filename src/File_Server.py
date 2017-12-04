@@ -16,6 +16,7 @@ FILE_SERVER_PATH = ""
 class File_API(Resource):
 
     def get(self, file_name):
+        '''Read file'''
         file = get_file_read(file_name, FILE_SERVER_PATH)
         print("Received request for " + file_name)
         if(file == None):
@@ -29,6 +30,7 @@ class File_API(Resource):
             return response
     
     def post(self, file_name):
+        '''write to file'''
         file = get_file_write(file_name, FILE_SERVER_PATH)
         print("Received request for " + file_name)
         if(file == None):
