@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, abort
 import requests
@@ -5,6 +7,17 @@ from format import format_file_req
 import sys
 import json
 import uuid
+from pymongo import MongoClient
+
+client = MongoClient()
+db = client.lock_db
+file_locks = db.file_locks
+
+'''{
+    'file_name':
+    'is_locked':
+    'lock_holders': [queue] of client ids]
+}'''
 
 app = Flask(__name__)
 api = Api(app)
@@ -13,8 +26,7 @@ api = Api(app)
 #one for mapping the file name to whether or not it's locked
 #Another for mapping the filename to a queue where the first uuid in the queue is the person who has it locked and 
 #the following uuids are the next in line
-FILE_LOCKS = {}
-LOCK_HOLDERS = {}
+
 
 #api
 #***Users ids will be needed to unlock the lock on a file***
@@ -24,73 +36,101 @@ LOCK_HOLDERS = {}
 #If the file is locked, check if the user exists in the queue, if he does, send back a not available message, 
 #Other wise, create a new uuid for him, add him to the queue and 
 
+def update(file_name, lock_holders, is_locked):
+    file_locks.update_one(
+                    {'file_name': file_name},
+                    {
+                        '$set':{
+                            'lock_holders': lock_holders,
+                            'is_locked': is_locked
+                        }
+                    }
+                )
+
+
 class read_lock_API(Resource):
     def get(self, file_name, id):
         print('id: ', id)
         print('file name: ', file_name)
-        if file_name in LOCK_HOLDERS:
-            print('file user list: ', LOCK_HOLDERS[file_name])
-            print('Is file locked: ', FILE_LOCKS[file_name])
+
         if id == '0':
             id = str(uuid.uuid4())
-        
 
-        if not file_name in FILE_LOCKS:
-            print('file didnt exist before')
-            FILE_LOCKS[file_name] = True
-            
-            LOCK_HOLDERS[file_name] = [id]
+        lock_acquired = False
+        response = {
+            "client_id": id,
+            "lock_acquired": lock_acquired
+        }
+
+        #1
+        file_lock = file_locks.find_one({'file_name': file_name})
+        if file_lock == None:
+            new_file_lock = {
+                'file_name': file_name,
+                'is_locked': True,
+                'lock_holders': [id]
+            }
+            file_locks.insert_one(new_file_lock)
+            lock_acquired = True
             response = {
                 "client_id": id,
-                "lock_acquired": True
+                "lock_acquired": lock_acquired
             }
+            print('exit point 1')
             return jsonify(response)
+        else:
+            is_locked = file_lock['is_locked']
+            lock_holders = file_lock['lock_holders']
 
-        if FILE_LOCKS[file_name] == False:
-            if LOCK_HOLDERS[file_name] == []:
-                FILE_LOCKS[file_name] = True
-                LOCK_HOLDERS[file_name] = [id]
+        #2
+        if is_locked == False:
+            if lock_holders == []:
+                is_locked = True
+                lock_holders = [id]
+                lock_acquired = True
                 response = {
                     "client_id": id,
-                    "lock_acquired": True
+                    "lock_acquired": lock_acquired
                 }
+                update(file_name, lock_holders, is_locked)
+                print('exit point 2')
                 return jsonify(response)
+
             else:
-                if LOCK_HOLDERS[file_name][0] == id:
-                    FILE_LOCKS[file_name] = True
+                if lock_holders[0] == id:
+                    is_locked = True
+                    lock_acquired = True
                     response = {
                         "client_id": id,
-                        "lock_acquired": True
+                        "lock_acquired": lock_acquired
                     }
+                    update(file_name, lock_holders, is_locked)
+                    print('exit point 3')
                     return jsonify(response)
                 else:
-                    if not id in LOCK_HOLDERS[file_name]:
-                        LOCK_HOLDERS[file_name].append(id)
-                    response = {
-                        "client_id": id,
-                        "lock_acquired": False
-                    }
+                    if not id in lock_holders:
+                        lock_holders.append(id)
+                        update(file_name, lock_holders, is_locked)
+                    lock_acquired = False
+                    print('exit point 3')
                     return jsonify(response)
         else:
-            if LOCK_HOLDERS[file_name][0] == id:
+            if lock_holders[0] == id:
+                lock_acquired = True
                 response = {
                     "client_id": id,
-                    "lock_acquired": True
+                    "lock_acquired": lock_acquired
                 }
+                print('exit point 4')
                 return jsonify(response)
-            if not id in LOCK_HOLDERS[file_name]:
-                LOCK_HOLDERS[file_name].append(id)
-            response = {
-                "client_id": id,
-                "lock_acquired": False
-            }
+            if not id in lock_holders:
+                lock_holders.append(id)
+                update(file_name, lock_holders, is_locked)
+            lock_acquired = False
+            print('exit point 5')
             return jsonify(response)
-            
-        
+                    
 
-
-
-        
 
 #Post to post lock
 
@@ -99,5 +139,6 @@ class read_lock_API(Resource):
 api.add_resource(read_lock_API, '/api/lock/<string:file_name>/<string:id>')
 
 if __name__ == '__main__':
+    db.drop_collection('file_locks')
     server_port = int(sys.argv[1])
     app.run(host= '0.0.0.0', port = server_port, debug = True)

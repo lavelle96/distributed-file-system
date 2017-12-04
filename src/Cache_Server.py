@@ -19,15 +19,15 @@ file_timestamps = db.file_timestamps
 app = Flask(__name__)
 api = Api(app)
 
-#Dictionary of file_names to timestamps
-FILE_TIMESTAMP = {}
-
 def cache_is_full():
     if file_timestamps.count() >= cf.CACHE_FILE_CAPACITY:
         return True
     return False
 
 def get_LRU_file():
+    '''returns file name of the least recently used
+    file in the cache
+    '''
     latest = datetime.now()
     latest_index = -1
     files = file_timestamps.find()

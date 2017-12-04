@@ -5,6 +5,7 @@ from format import format_file_req
 import sys
 import json
 from pymongo import MongoClient
+
 client = MongoClient()
 db = client.dir_db
 file_map = db.file_map
