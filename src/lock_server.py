@@ -16,11 +16,13 @@ file_locks = db.file_locks
 '''{
     'file_name':
     'is_locked':
-    'lock_holders': [queue] of client ids]
+    'lock_holders': [queue of client ids]
 }'''
 
 app = Flask(__name__)
 api = Api(app)
+
+#TODO: clean up code for get lock, if possible
 
 #Two dicts: 
 #one for mapping the file name to whether or not it's locked
@@ -31,10 +33,7 @@ api = Api(app)
 #api
 #***Users ids will be needed to unlock the lock on a file***
 #Get to get lock (lock the lock)
-#1.If the file doesnt exist in the dicts, add it to the dicts, lock it and send the clients uuid back to him
-#2.Else if the file isnt locked, check if the queue is empty, if it is return lock, otherwise check if the user is at the top of the queue, if he is: lock the file and send back the users uuid
-#If the file is locked, check if the user exists in the queue, if he does, send back a not available message, 
-#Other wise, create a new uuid for him, add him to the queue and 
+
 
 def update(file_name, lock_holders, is_locked):
     file_locks.update_one(
@@ -46,10 +45,31 @@ def update(file_name, lock_holders, is_locked):
                         }
                     }
                 )
+def get_response(id, lock_acquired):
+    response = {
+        'client_id': id,
+        'lock_acquired': lock_acquired
+    }
+    return response
+
+def post_response(id, release_successful):
+    response = {
+        'client_id': id,
+        'release_successful': release_successful
+    }
+    return response
 
 
 class read_lock_API(Resource):
     def get(self, file_name, id):
+        '''
+        get request sent when a user is looking to acquire a lock
+        '''
+        #LOGIC: 
+        #1.If the file doesnt exist in the dicts, add it to the dicts, lock it and send the clients uuid back to him
+        #2.Else if the file isnt locked, check if the queue is empty, if it is return lock, otherwise check if the user is at the top of the queue, if he is: lock the file and send back the users uuid
+        #If the file is locked, check if the user exists in the queue, if he does, send back a not available message, 
+        #Other wise, create a new uuid for him, add him to the queue and 
         print('id: ', id)
         print('file name: ', file_name)
 
@@ -111,7 +131,6 @@ class read_lock_API(Resource):
                     if not id in lock_holders:
                         lock_holders.append(id)
                         update(file_name, lock_holders, is_locked)
-                    lock_acquired = False
                     print('exit point 3')
                     return jsonify(response)
         else:
@@ -126,15 +145,34 @@ class read_lock_API(Resource):
             if not id in lock_holders:
                 lock_holders.append(id)
                 update(file_name, lock_holders, is_locked)
-            lock_acquired = False
             print('exit point 5')
             return jsonify(response)
                     
+    def post(self, file_name, id):
+        '''
+        post request sent when a user is releasing a lock
+        '''
+        #LOGIC - if lock is in possesion of the specified id, i.e., if the client is in the first position in the queue:
+        #       remove the client from the queue, making sure to move the queue one to the left, also set is_locked to False
+        '''
+        response = {
+            'release_successful': True/False
+        }
+        '''
+        file_lock = file_locks.find_one({'file_name': file_name})
+        if file_lock == None:
+            return post_response(id, False)
+        lock_holders = file_lock['lock_holders']
+        is_locked = file_lock['is_locked']
+        if is_locked == False or lock_holders == [] or lock_holders[0] != id:
+            return post_response(id, False)
+        is_locked = False
+        lock_holders.pop(0)
+        update(file_name, lock_holders, is_locked)
+        return post_response(id, True)
 
 
-#Post to post lock
 
-#Might have a second api seperate from the reads
 
 api.add_resource(read_lock_API, '/api/lock/<string:file_name>/<string:id>')
 

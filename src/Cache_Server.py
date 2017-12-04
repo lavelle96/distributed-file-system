@@ -56,7 +56,8 @@ class Cache_API(Resource):
                 {
                     '$set':{
                         'name': file_name,
-                        'timestamp': datetime.now()                    }
+                        'timestamp': datetime.now()                    
+                        }
                 },
                 upsert=True
             )
