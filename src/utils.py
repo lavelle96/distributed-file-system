@@ -40,3 +40,21 @@ def does_file_exist(file_name, path):
     if file_name in file_list:
         return True
     return False
+
+def get_files_in_dir(directory):
+    '''gets files in directory'''
+    rootDir = directory
+    fileList = []
+
+    for dir_, _, files in os.walk(rootDir):
+        for fileName in files:
+            relDir = os.path.relpath(dir_, rootDir)
+            relFile = os.path.join(relDir, fileName)
+            fileList.append(relFile)
+    
+    return fileList
+
+def split_path(path):
+     f = path.split("/", 1)[1]
+     d = path.split('/', 1)[0]
+     return d, f

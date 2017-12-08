@@ -11,7 +11,18 @@ import config as cf
 client = MongoClient()
 db = client.dir_db
 file_map = db.file_map
+'''
+{
+    'name':
+    'dir':
+}   
+'''
 dir_map = db.dir_map
+'''{
+    'name':
+    'num_nodes':
+    'ports':
+}'''
 active_nodes = db.active_nodes
 '''
 {
@@ -24,36 +35,7 @@ active_nodes = db.active_nodes
 app = Flask(__name__)
 api = Api(app)
 
-#Map of directories to whether they have a file server managing them
 
-
-FILE_11 = {
-    'name': '1.1',
-    'dir': 'D1'
-}
-FILE_12 = {
-    'name': '1.2',
-    'dir': 'D1'
-}
-FILE_21 = {
-    'name': '2.1',
-    'dir': 'D2'
-}
-FILE_22 = {
-    'name': '2.2',
-    'dir': 'D2'
-}
-DIR_1 = {
-    'name': 'D1',
-    'num_nodes': 0,
-    'ports': []
-}
-DIR_2 = {
-    'name': 'D2',
-    'num_nodes': 0,
-    'ports': []
-    }
-#Map of Directory to Node
 
 class Directory_API(Resource):
     def get(self, file_name):
@@ -89,73 +71,86 @@ class Directory_API(Resource):
         return jsonify(response)
 
 class Node_Init_API(Resource):
-    def get(self, port_number):
-        dirs = dir_map.find()
 
-        directory_to_return = None
-        min_nodes = None
-        for d in dirs:
-            ports = d['ports']
-            #If port is already registered
-            if port_number in ports:
-                response = {"file_dir": d['name']}
-                return response
-            #otherwise return port with least amount of nodes
-            print('nodes on dir: ', d['name'], ' ', d['num_nodes'])
-            if min_nodes == None:
-                print('new min: ', d['num_nodes'])
-                min_nodes = d['num_nodes'] 
-                directory_to_return = d
-            elif d['num_nodes'] < min_nodes:
-                print('new min: ', d['num_nodes'])
-                min_nodes = d['num_nodes'] 
-                directory_to_return = d
-        
-        print('directory chosen to return: ', d)
-        #append port number to list
-        p_list = directory_to_return['ports']
-        p_list.append(port_number)
-        
-        #Increase number of nodes
-        num_nodes = directory_to_return['num_nodes']
-        num_nodes += 1
-
-        name = directory_to_return['name']
-
-        dir_map.update_one(
-            {'name': name},
-            {
-                '$set':{
-                    'ports': p_list,
-                    'num_nodes': num_nodes
-                }
-            }
-        )
-
+    def post(self, port_number):
+        '''
+        Allows file servers to post the name of their directory and all the files contained in it
+        request data:
+        data={
+            dir_name:
+            file_names:[]
+        }
+        '''
+        if(not request.is_json):
+            abort(400)
+        data = request.json
+        print('new node up and running, data: ', data)
+        dir_name = data['dir_name']
         new_node = {
             'port': port_number,
-            'dir': name,
+            'dir': dir_name,
             'load': 0
         }
         active_nodes.insert_one(new_node)
+        file_names = data['file_names']
+        dir_info = dir_map.find_one({'name': dir_name})
+        if dir_info == None:
+            #Create directory
+            new_dir = {
+                'name': dir_name,
+                'num_nodes': 1,
+                'ports': [port_number]
+            }
+            dir_map.insert_one(new_dir)
+            for f in file_names:
+                new_file = {
+                    'name': f,
+                    'dir': dir_name
+                }
+                file_map.insert_one(new_file)
+        else:
+            #Add port as a node on that directory
+            port_list = dir_info['ports']
+            port_list.append(port_number)
+            num_nodes = dir_info['num_nodes']
+            num_nodes +=1
 
+            dir_map.update_one(
+                {'name': dir_name},
+                {
+                    '$set':{
+                        'ports': port_list,
+                        'num_nodes': num_nodes
+                    }
+                }
+            )
+
+
+
+class dir_ports_API(Resource):
+    def get(self, directory):
+        d = dir_map.find_one({'name': directory})
+        ports = d['ports']
         response = {
-            "file_dir": name
+            'dir_name': directory,
+            'ports': ports
         }
-        print('response to port ', str(port_number), ' ', response)
         return jsonify(response)
+
+    
+
 
 
 
 api.add_resource(Directory_API, '/api/files/<string:file_name>', endpoint = 'file')
 api.add_resource(Node_Init_API, '/api/node/<string:port_number>', endpoint = 'node')
+api.add_resource(dir_ports_API, '/api/ports/<string:directory>')
 
 if __name__ == '__main__':
     db.drop_collection('file_map')
     db.drop_collection('dir_map')
     db.drop_collection('active_nodes')
-    file_map.insert_many([FILE_11, FILE_12, FILE_21, FILE_22])
-    dir_map.insert_many([DIR_1, DIR_2])
+
     server_port = int(sys.argv[1])
 
     server_init_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)

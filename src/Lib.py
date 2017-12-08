@@ -113,7 +113,8 @@ def write_file(file_name):
     file_content = f.read()
     data = {
         "file_name": file_name,
-        "file_content": file_content
+        "file_content": file_content,
+        "replicate": True
     }
     headers = cf.JSON_HEADER
     response = requests.post(url, data = json.dumps(data), headers = headers)
