@@ -15,8 +15,10 @@ dir_map = db.dir_map
 active_nodes = db.active_nodes
 '''
 {
-    'dir':
     'port':
+    'dir':
+    'load':
+    
 }
 '''
 app = Flask(__name__)
@@ -43,12 +45,14 @@ FILE_22 = {
 }
 DIR_1 = {
     'name': 'D1',
-    'supported': False
+    'num_nodes': 0,
+    'ports': []
 }
 DIR_2 = {
     'name': 'D2',
-    'supported': False
-}
+    'num_nodes': 0,
+    'ports': []
+    }
 #Map of Directory to Node
 
 class Directory_API(Resource):
@@ -59,45 +63,84 @@ class Directory_API(Resource):
             abort(404)
         file_dir = f['dir']
         d = dir_map.find_one({'name': file_dir})
-        if d['supported'] == False:
+        if d['num_nodes'] == 0:
             abort(404)
-        node = active_nodes.find_one({'dir': file_dir})
+
+        nodes = active_nodes.find({'dir': file_dir})
+        min_load = None
+        port = 0
+        for node in nodes:
+            if min_load == None or node['load'] < min_load:
+                min_load = node['load']
+                port = node['port']
+
+        active_nodes.update_one(
+            {'port': port},
+            {
+                '$inc': {
+                    'load': 1
+                }
+            }
+        )
+
         response = {
-            'file_server_port': node['port']
+            'file_server_port': port
         }
         return jsonify(response)
 
 class Node_Init_API(Resource):
     def get(self, port_number):
-        query = dir_map.find()
-        for i in query:
-            print(i)
+        dirs = dir_map.find()
 
-        node = active_nodes.find_one({'port': port_number})
-        if node != None:
-            response = {"file_dir": node['dir']}
-            print('response to port ', str(port_number), ' ', response)
-            return jsonify(response)
+        directory_to_return = None
+        min_nodes = None
+        for d in dirs:
+            ports = d['ports']
+            #If port is already registered
+            if port_number in ports:
+                response = {"file_dir": d['name']}
+                return response
+            #otherwise return port with least amount of nodes
+            print('nodes on dir: ', d['name'], ' ', d['num_nodes'])
+            if min_nodes == None:
+                print('new min: ', d['num_nodes'])
+                min_nodes = d['num_nodes'] 
+                directory_to_return = d
+            elif d['num_nodes'] < min_nodes:
+                print('new min: ', d['num_nodes'])
+                min_nodes = d['num_nodes'] 
+                directory_to_return = d
+        
+        print('directory chosen to return: ', d)
+        #append port number to list
+        p_list = directory_to_return['ports']
+        p_list.append(port_number)
+        
+        #Increase number of nodes
+        num_nodes = directory_to_return['num_nodes']
+        num_nodes += 1
 
+        name = directory_to_return['name']
 
-        d = dir_map.find_one({"supported": False})
-        if d==None:
-            return d
         dir_map.update_one(
-            {"name": d['name']},
+            {'name': name},
             {
                 '$set':{
-                    "supported": True
+                    'ports': p_list,
+                    'num_nodes': num_nodes
                 }
             }
         )
-        active_nodes.insert_one({
-            'dir': d['name'],
-            'port': port_number
-        })
+
+        new_node = {
+            'port': port_number,
+            'dir': name,
+            'load': 0
+        }
+        active_nodes.insert_one(new_node)
 
         response = {
-            "file_dir": d['name']
+            "file_dir": name
         }
         print('response to port ', str(port_number), ' ', response)
         return jsonify(response)
