@@ -45,11 +45,14 @@ class replication_API(Resource):
             'file_content': file_content,
             'replicate': False
         }
-        print('Sending this data on: ', data)
+        print('request to replicate received from ', fs_port)
         for port in ports:
-            if port != fs_port:
+            if str(port) != str(fs_port):
+                print('sending request to ', port)
                 req = format_file_req(file_name, port)
                 requests.post(req, data=json.dumps(data), headers = cf.JSON_HEADER)
+                print('request sent to, ', port)
+        print('finished replication')
         return 
 
 
