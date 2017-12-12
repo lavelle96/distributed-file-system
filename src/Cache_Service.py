@@ -107,6 +107,24 @@ class Cache_API(Resource):
         except:
             abort(403)
 
+class state_API(Resource):
+    '''Api that allows calls to check the state and shutdown the server'''
+    def get(self):
+        response = {
+            'state': 'running'
+        }
+        return response
+
+    def delete(self):
+        request.environ.get('werkzeug.server.shutdown')()
+        response = {
+            'state': 'shutting down'
+        }
+        return response
+
+
+
+api.add_resource(state_API, '/api/state')
                 
 
 

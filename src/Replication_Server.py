@@ -55,8 +55,24 @@ class replication_API(Resource):
         print('finished replication')
         return 
 
+class state_API(Resource):
+    '''Api that allows calls to check the state and shutdown the server'''
+    def get(self):
+        response = {
+            'state': 'running'
+        }
+        return response
+
+    def delete(self):
+        request.environ.get('werkzeug.server.shutdown')()
+        response = {
+            'state': 'shutting down'
+        }
+        return response
 
 
+
+api.add_resource(state_API, '/api/state')
 api.add_resource(replication_API, '/api/replicate')
 
 if __name__ == '__main__':

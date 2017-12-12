@@ -138,10 +138,24 @@ class dir_ports_API(Resource):
         return jsonify(response)
 
     
+class state_API(Resource):
+    '''Api that allows calls to check the state and shutdown the server'''
+    def get(self):
+        response = {
+            'state': 'running'
+        }
+        return response
+
+    def delete(self):
+        request.environ.get('werkzeug.server.shutdown')()
+        response = {
+            'state': 'shutting down'
+        }
+        return response
 
 
 
-
+api.add_resource(state_API, '/api/state')
 api.add_resource(Directory_API, '/api/files/<string:file_name>', endpoint = 'file')
 api.add_resource(Node_Init_API, '/api/node/<string:port_number>', endpoint = 'node')
 api.add_resource(dir_ports_API, '/api/ports/<string:directory>')
