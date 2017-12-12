@@ -51,7 +51,11 @@ class File_API(Resource):
             print("Content received: ", content)
             if(content != None and request.is_json):
                 print("Performing write")
-                file.write(content["file_content"])
+                try:
+                    file.write(content["file_content"])
+                except:
+                    print('write failed')
+                    return
                 response = {
                     "status": "Success"
                 }
