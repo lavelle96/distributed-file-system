@@ -148,7 +148,11 @@ def delete_file(file_name):
     """
     dir_server_port = get_port('dir_server')
     check_port(dir_server_port)
-    file_port = get_file_port(file_name, dir_server_port)
+    try: 
+        file_port = get_file_port(file_name, dir_server_port)
+    except:
+        print('File doesnt exist')
+        return
     req = format_file_req(file_port)
     data = {
         'file_name': file_name,

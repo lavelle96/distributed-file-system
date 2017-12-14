@@ -29,3 +29,7 @@ def format_show_files(dir_port):
 def format_state_request(server_port):
     url = 'http://localhost:' + str(server_port) + '/api/state'
     return url
+
+def format_update_req(dir_server_port):
+    url = 'http://localhost:' + str(dir_server_port) + '/api/update'
+  

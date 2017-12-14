@@ -65,7 +65,9 @@ class File_API(Resource):
                     req = format_file_req(dir_port)
                     data = {
                         'file_name': file_name,
-                        'file_server_port': str(SERVER_PORT)
+                        'file_server_port': str(SERVER_PORT),
+                        'new_file': new_file,
+                        'file_content': file_content
                     }
                     requests.post(req, data = json.dumps(data), headers=cf.JSON_HEADER)
 
@@ -76,6 +78,20 @@ class File_API(Resource):
                 print("Performing write")
                 try:
                     file.write(file_content)
+                    if content['replicate'] == True:
+                        print('replicating write')
+                        #Find replication port
+                        dir_server_port = get_port('dir_server')
+                        #Send post onto replication server
+                        req = format_file_req(dir_server_port)
+                        data = {
+                            'file_name': file_name,
+                            'file_content': content['file_content'],
+                            'file_server_port': str(SERVER_PORT),
+                            'new_file': new_file
+                        }
+                        requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER)
+
                 except:
                     print('write failed')
                     return
@@ -83,22 +99,7 @@ class File_API(Resource):
                 "status": "Success"
             }
             
-            if content['replicate'] == True:
-                print('replicating write')
-                #Find replication port
-                rep_port_url = format_registry_req('rep_server', cf.REGISTRY_SERVER_PORT)
-                response = json.loads(requests.get(rep_port_url).content.decode())
-                rep_server_port = response['dir_port']
-                #Send post onto replication server
-                req = format_replication_req(rep_server_port)
-                data = {
-                    'file_name': file_name,
-                    'file_content': content['file_content'],
-                    'fs_port': str(SERVER_PORT),
-                    'new_file': new_file
-                }
-                requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER)
-
+           
             return response
             
         
@@ -112,9 +113,11 @@ class File_API(Resource):
         data = request.json
         file_name = data['file_name']
         replicate = data['replicate']
+
         if does_file_exist(file_name, FILE_SERVER_PATH):
             try:
                 delete_file(file_name, FILE_SERVER_PATH)
+                print('File deleted from ', SERVER_PORT)
                 #Alert dir server
                 if replicate == True:
                     dir_port = get_port('dir_server')

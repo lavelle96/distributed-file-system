@@ -16,6 +16,7 @@ file_map = db.file_map
     'file_name':
     'num_nodes:
     'ports':
+    'version':
 }   
 '''
 
@@ -73,57 +74,86 @@ class Directory_API(Resource):
 
     def post(self):
         '''
-        Endpoint for creating file
-        {
-            'file_name':
-            'file_server_port':
-        }
+        Endpoint for creating and updating file
+                'file_name': ,
+                'file_content': ,
+                'file_server_port': ,
+                'new_file': 
         '''
         data = request.json
         file_name = data['file_name']
         file_server_port = data['file_server_port']
+        new_file = data['new_file']
+        file_content = data['file_content']
 
-        print('')
-        db_node = active_nodes.find_one({'port': file_server_port})
-        if not db_node:
-            print('Server isnt registered: ', file_server_port)
-            return
-      
-        db_file = file_map.find_one({'file_name': file_name})
-        if db_file:
-            print('file already exists, updating db')
-            ports = db_file["ports"]
-            ports.append(file_server_port)
-            file_map.update_one(
-                {'file_name': file_name},
-                {
-                    '$inc':{
-                        'num_nodes': 1
-                    },
-                    '$set':{
-                        'ports': ports
-                    }
-                }
-            )
-        else:
+        #Create file
+        if new_file:
+            #Handle db synchroniation
+            db_node = active_nodes.find_one({'port': file_server_port})
+            if not db_node:
+                print('Server isnt registered: ', file_server_port)
+                return
             
-            new_file = {
-                'file_name': file_name,
-                'ports': [file_server_port],
-                'num_nodes': 1
-            }
-            file_map.insert_one(new_file)
-
-        file_list = db_node['file_names']
-        file_list.append(file_name)
-        active_nodes.update_one(
-            {'port': file_server_port},
-            {
-                '$set':{
-                    'file_names': file_list
+            #Add file to map if it hasnt been created, add it as a supported file in a node if it hasnt before
+            db_file = file_map.find_one({'file_name': file_name})
+            if db_file != None:
+                print('file ' , file_name, ' already exists, updating db')
+                ports = db_file["ports"]
+                if not file_server_port in ports:
+                    ports.append(file_server_port)
+                    file_map.update_one(
+                        {'file_name': file_name},
+                        {
+                            '$inc':{
+                                'num_nodes': 1
+                            },
+                            '$set':{
+                                'ports': ports
+                            }
+                        }
+                    )
+            else:
+                
+                new_file = {
+                    'file_name': file_name,
+                    'ports': [file_server_port],
+                    'num_nodes': 1
                 }
+                print('inserting new file: ', file_name)
+                file_map.insert_one(new_file)
+
+            file_list = db_node['file_names']
+            if not file_name in file_list:
+                file_list.append(file_name)
+                active_nodes.update_one(
+                    {'port': file_server_port},
+                    {
+                        '$set':{
+                            'file_names': file_list
+                        }
+                    }
+                )  
+        #Update file
+        else:
+            #Replicate update across other nodes
+            d = file_map.find_one({'file_name': file_name})
+            ports = d['ports']
+            data = {
+                'file_name': file_name,
+                'file_content': file_content,
+                'replicate': False,
+                'new_file': new_file
             }
-        )
+            print('request to replicate received from ', file_server_port)
+            for port in ports:
+                if str(port) != str(file_server_port):
+                    print('sending request to ', port)
+                    req = format_file_req(port)
+                    requests.post(req, data=json.dumps(data), headers = cf.JSON_HEADER)
+                    print('request sent to, ', port)
+            print('finished replication')
+            return 
+         
     def delete(self):
         """
         Used to delete a file from the database
@@ -138,7 +168,7 @@ class Directory_API(Resource):
         db_f = file_map.find_one({'file_name': file_name})
         ports = db_f['ports']
         data = {
-            'file_name': False,
+            'file_name': file_name,
             'replicate': False
         }
         for p in ports:
@@ -280,11 +310,26 @@ class get_files_API(Resource):
         return response
 
 
+class update_API(Resource):
+    '''API used to manage synchronisation of db'''
+    def post(self):
+        '''
+        data = {
+                'file_name': ,
+                'file_content': ,
+                'fs_port': ,
+                'new_file': 
+            }
+        '''
+        #upate 
+
+
 api.add_resource(Directory_API, '/api/file', endpoint = 'file')
 api.add_resource(Node_State_API, '/api/node/<string:port_number>', endpoint = 'node')
 api.add_resource(file_ports_API, '/api/ports')
 api.add_resource(get_files_API, '/api/files')
 api.add_resource(state_API, '/api/state')
+api.add_resource(update_API, '/api/update')
 
 
 if __name__ == '__main__':
