@@ -51,12 +51,13 @@ def read_file(file_name):
         url = format_file_req(file_server_port)
         response =  json.loads(requests.get(url, data=json.dumps(file_name_data), headers=cf.JSON_HEADER).content.decode())
         file_content = response["file_content"]
-
+        file_version = response['file_version']
         #post to the cache
         url = format_file_req(cache_port)
         data = {
             'file_name': file_name,
-            'file_content': file_content
+            'file_content': file_content,
+            'file_version': file_version
         }
         response = requests.post(url, data=json.dumps(data), headers=cf.JSON_HEADER)
         
@@ -120,11 +121,17 @@ def write_file(file_name):
         "new_file": False
     }
     headers = cf.JSON_HEADER
-    response = requests.post(url, data = json.dumps(data), headers = headers)
+    response = json.loads(requests.post(url, data = json.dumps(data), headers = headers).content.decode())
+    file_version = response['file_version']
 
     #release lock
     requests.post(lock_url, data=json.dumps(file_name_data), headers=cf.JSON_HEADER)
 
+    data = {
+        'file_name': file_name,
+        'file_content': file_content,
+        'file_version': file_version
+    }
     #update cache
     url = format_file_req(cache_port)
     response = requests.post(url, json.dumps(data), headers=headers)

@@ -3,7 +3,7 @@ from flask_restful import inputs, reqparse, Api, fields, marshal, Resource, abor
 import requests
 from utils import get_file_read, get_file_write, get_files_in_dir, split_path, get_port, update_file, delete_file, does_file_exist
 import sys
-from format import format_node_req, format_registry_req, format_replication_req, format_file_req
+from format import format_node_req, format_registry_req, format_replication_req, format_file_req, format_version_req
 import json
 import config as cf
 
@@ -16,6 +16,13 @@ FILE_SERVER_PATH = ""
 SERVER_PORT = 0
 ROOT_DIR = ""
 
+def get_file_version(file_name):
+    dir_server_port = get_port('dir_server')
+    req = format_version_req(dir_server_port)
+    data = {'file_name': file_name}
+    resp = json.loads(requests.get(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    version = resp['file_version']
+    return version
 
 class File_API(Resource):
 
@@ -26,13 +33,15 @@ class File_API(Resource):
         print( 'looking for file: ', file_name, ' in ', FILE_SERVER_PATH)
         
         file_content = get_file_read(file_name, FILE_SERVER_PATH)
+        file_version = get_file_version(file_name)
         if(file_content == None):
             abort(404)
         else:
             print("Sending back the following content: ", file_content)
             response = {
                 "file_name": file_name,
-                "file_content": file_content
+                "file_content": file_content,
+                "file_version": file_version
                 }
             return response
     
@@ -49,6 +58,7 @@ class File_API(Resource):
         content = request.json
         file_name = content['file_name']
         new_file = content['new_file']
+        file_version = 0
         file = get_file_write(file_name, FILE_SERVER_PATH)
         print("Received request for " + file_name)
         if(file == None and new_file == False):
@@ -69,7 +79,8 @@ class File_API(Resource):
                         'new_file': new_file,
                         'file_content': file_content
                     }
-                    requests.post(req, data = json.dumps(data), headers=cf.JSON_HEADER)
+                    response = json.loads(requests.post(req, data = json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+                    file_version = response['file_version']
 
                 except:
                     print('Creation failed')
@@ -90,13 +101,14 @@ class File_API(Resource):
                             'file_server_port': str(SERVER_PORT),
                             'new_file': new_file
                         }
-                        requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER)
+                        response = json.loads(requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+                        file_version = response['file_version']
 
                 except:
                     print('write failed')
                     return
             response = {
-                "status": "Success"
+                "file_version": file_version
             }
             
            

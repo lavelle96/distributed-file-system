@@ -81,9 +81,10 @@ class Directory_API(Resource):
         file_server_port = data['file_server_port']
         new_file = data['new_file']
         file_content = data['file_content']
-
+        file_version = 0
         #Create file
         if new_file:
+            file_version = 1
             #Handle db synchroniation
             db_node = active_nodes.find_one({'port': file_server_port})
             if not db_node:
@@ -133,12 +134,14 @@ class Directory_API(Resource):
         #Update file
         else:
             d = file_map.find_one({'file_name': file_name})
+            file_version = d['file_version']
+            file_version += 1
             #increment file version
             file_map.update_one(
                 {'file_name': file_name},
                 {
-                    '$inc':{
-                        'file_version': 1
+                    '$set':{
+                        'file_version': file_version
                     }
                 }
             )
@@ -158,7 +161,9 @@ class Directory_API(Resource):
                     requests.post(req, data=json.dumps(data), headers = cf.JSON_HEADER)
                     print('request sent to, ', port)
             print('finished replication')
-            return 
+
+            
+        return jsonify({'file_version': file_version})
          
     def delete(self):
         """
@@ -317,18 +322,23 @@ class get_files_API(Resource):
         return response
 
 
-class update_API(Resource):
-    '''API used to manage synchronisation of db'''
-    def post(self):
-        '''
-        data = {
-                'file_name': ,
-                'file_content': ,
-                'fs_port': ,
-                'new_file': 
+class version_API(Resource):
+    def get(self):
+        '''returns current version of file: {'file_name': }'''
+        data = request.json
+        file_name = data['file_name']
+        try:
+            db_f = file_map.find_one({'file_name': file_name})
+            file_version = db_f['file_version']
+            response = {
+                'file_version': file_version
             }
-        '''
-        #upate 
+        except:
+            print('file doesnt exist')
+            response = {
+                'file_version': -1
+            }
+        return jsonify(response)
 
 
 api.add_resource(Directory_API, '/api/file', endpoint = 'file')
@@ -336,7 +346,7 @@ api.add_resource(Node_State_API, '/api/node/<string:port_number>', endpoint = 'n
 api.add_resource(file_ports_API, '/api/ports')
 api.add_resource(get_files_API, '/api/files')
 api.add_resource(state_API, '/api/state')
-api.add_resource(update_API, '/api/update')
+api.add_resource(version_API, '/api/version')
 
 
 if __name__ == '__main__':
