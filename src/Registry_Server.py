@@ -2,6 +2,10 @@ from flask import Flask, jsonify, request
 from flask_restful import Api, Resource
 from pymongo import MongoClient
 import config as cf
+import requests
+from threading import Thread
+from format import format_state_request
+import time
 
 app = Flask(__name__)
 api = Api(app)
@@ -17,6 +21,20 @@ directories = db.directories
 }
 '''
 
+def thread_node_check():
+    while(1):
+        servers = directories.find()
+        for s in servers:
+            port = s['dir_port']
+            req = format_state_request(port)
+            try:
+                requests.get(req)
+            except:
+                #delete server from directory
+                directories.delete_one({'dir_port': port})
+
+        time.sleep(3)
+
 def get_response(port, dir_name):
     response = {
         'dir_port': port,
@@ -28,7 +46,8 @@ class registry_API(Resource):
     def get(self, dir_name):
         '''Get port of directory name given'''
         servers = directories.find({'dir_name': dir_name})
-        if servers == None:
+        
+        if servers == None or servers.count() < 1:
             return get_response(-1, dir_name)
         min_load = None
         server_to_return = None
@@ -66,14 +85,14 @@ class registry_API(Resource):
             'dir_port': dir_port,
             'dir_load': 0
         }
-        directories.update_one(
-            {'dir_name': dir_name, 'dir_port': dir_port},
-            {
-                '$set':new_dir
-            },
-            upsert=True
-        )
         try:
+            directories.update_one(
+                {'dir_name': dir_name, 'dir_port': dir_port},
+                {
+                    '$set':new_dir
+                },
+                upsert=True
+            )
             return jsonify({
                 'result': 'success'
             })
@@ -86,5 +105,8 @@ api.add_resource(registry_API, '/api/dirs/<string:dir_name>')
 
 if __name__ == '__main__':
     db.drop_collection('directories')
+    node_check_thread = Thread(target=thread_node_check)
+    node_check_thread.start()
+
     server_port = cf.REGISTRY_SERVER_PORT
     app.run('0.0.0.0', server_port)

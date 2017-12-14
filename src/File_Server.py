@@ -114,29 +114,36 @@ if __name__ == '__main__':
     FILE_SERVER_PATH = file_path
 
     #Register with registry server
-    server_init_url = format_registry_req('file_server', cf.REGISTRY_SERVER_PORT)
-    data = {
-        'dir_port': SERVER_PORT
-    }
-    requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
+    try:
+        server_init_url = format_registry_req('file_server', cf.REGISTRY_SERVER_PORT)
+        data = {
+            'dir_port': SERVER_PORT
+        }
+        requests.post(server_init_url, data=json.dumps(data), headers=cf.JSON_HEADER)
+    except:
+        print('Registry server not ready')
+        sys.exit(1)
 
     #Get dir server port
-    dir_port_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
-    response = json.loads(requests.get(dir_port_url).content.decode())
-    dir_server_port = response['dir_port']
-
+    try:
+        dir_port_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
+        response = json.loads(requests.get(dir_port_url).content.decode())
+        dir_server_port = response['dir_port']
+        if str(dir_server_port) == str(-1):
+            sys.exit()
+    except:
+        print('No directory port up yet')
+        sys.exit()
     file_names = get_files_in_dir(FILE_SERVER_PATH)
     
     data = {
         'file_names': file_names
     }
     #Send batch of files
+  
     url = format_node_req(SERVER_PORT, dir_server_port)
     requests.post(url, data=json.dumps(data), headers= cf.JSON_HEADER).content.decode()
     
-
-    
-
     app.run(host= '0.0.0.0', port = SERVER_PORT, debug = False)
     print("File server node running on port: ", SERVER_PORT)
 
