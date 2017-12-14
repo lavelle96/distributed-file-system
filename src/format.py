@@ -1,5 +1,3 @@
-
-
 def format_file_req(port_number):
     url = 'http://localhost:' + str(port_number) + '/api/file' 
     return url

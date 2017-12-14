@@ -97,6 +97,7 @@ def split_path(path):
      return d, f
 
 def get_port(server_name):
+    '''Gets port of given server from registry server, returns none if that server doesnt exist'''
     url = format_registry_req(server_name, cf.REGISTRY_SERVER_PORT)
     response = json.loads(requests.get(url).content.decode())
     port = response['dir_port']

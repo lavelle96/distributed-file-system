@@ -1,9 +1,9 @@
 from flask import Flask, make_response, request
 from flask_restful import inputs, reqparse, Api, fields, marshal, Resource, abort
 import requests
-from utils import get_file_read, get_file_write, get_files_in_dir, split_path
+from utils import get_file_read, get_file_write, get_files_in_dir, split_path, get_port
 import sys
-from format import format_node_req, format_registry_req, format_replication_req
+from format import format_node_req, format_registry_req, format_replication_req, format_node_req
 import json
 import config as cf
 
@@ -94,6 +94,11 @@ class state_API(Resource):
         return response
 
     def delete(self):
+        #Alert directory server first
+        dir_port = get_port('dir_server')
+        if dir_port:
+            req = format_node_req(SERVER_PORT, dir_port)
+            requests.delete(req)
         request.environ.get('werkzeug.server.shutdown')()
         response = {
             'state': 'shutting down'

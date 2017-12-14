@@ -4,7 +4,7 @@ from pymongo import MongoClient
 import config as cf
 import requests
 from threading import Thread
-from format import format_state_request
+from format import format_state_request, format_node_req
 import time
 
 app = Flask(__name__)
@@ -30,6 +30,13 @@ def thread_node_check():
             try:
                 requests.get(req)
             except:
+                #If its a file server, alert the directory server
+                if str(s['dir_name']) == 'file_server':
+                    dir_server = directories.find_one({'dir_name': 'dir_server'})
+                    if dir_server:
+                        dir_port = dir_server['dir_port']
+                        req = format_node_req(port, dir_port)
+                        requests.delete(req)
                 #delete server from directory
                 directories.delete_one({'dir_port': port})
 

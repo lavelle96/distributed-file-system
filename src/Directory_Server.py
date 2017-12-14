@@ -28,7 +28,7 @@ active_nodes = db.active_nodes
 '''
 {
     'port':
-    'files': []
+    'file_names': []
     'load':
     
 }
@@ -77,7 +77,7 @@ class Directory_API(Resource):
 
 
 
-class Node_Init_API(Resource):
+class Node_State_API(Resource):
 
     def post(self, port_number):
         '''
@@ -128,6 +128,29 @@ class Node_Init_API(Resource):
                 }
                 file_map.insert_one(new_file)
                 
+    def delete(self, port_number):
+        '''Endpoint to alert dir server of file server gone down'''
+        node = active_nodes.find_one({'port': port_number})
+        if node == None:
+            return
+        #Take it off as supporting node from file map, then remove it as an active node
+        files_supported = node['file_names']
+        for f in files_supported:
+            db_f = file_map.find_one({'file_name': f})
+            if db_f:
+                supporting_nodes = db_f['ports']
+                supporting_nodes.remove(port_number)
+                num_nodes = db_f['num_nodes']
+                num_nodes -= 1
+                file_map.update_one({'file_name': f},
+                {
+                    '$set':{
+                        'ports': supporting_nodes,
+                        'num_nodes': num_nodes
+                    }
+                })
+        active_nodes.delete_one({'port': port_number})
+        return 
 
 
 class file_ports_API(Resource):
@@ -174,7 +197,7 @@ class get_files_API(Resource):
 
 api.add_resource(state_API, '/api/state')
 api.add_resource(Directory_API, '/api/file', endpoint = 'file')
-api.add_resource(Node_Init_API, '/api/node/<string:port_number>', endpoint = 'node')
+api.add_resource(Node_State_API, '/api/node/<string:port_number>', endpoint = 'node')
 api.add_resource(file_ports_API, '/api/ports')
 api.add_resource(get_files_API, '/api/files')
 
