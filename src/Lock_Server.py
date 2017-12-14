@@ -60,7 +60,7 @@ def post_response(id, release_successful):
 
 
 class read_lock_API(Resource):
-    def get(self, file_name, id):
+    def get(self, id):
         '''
         get request sent when a user is looking to acquire a lock
         '''
@@ -68,7 +68,9 @@ class read_lock_API(Resource):
         #1.If the file doesnt exist in the dicts, add it to the dicts, lock it and send the clients uuid back to him
         #2.Else if the file isnt locked, check if the queue is empty, if it is return lock, otherwise check if the user is at the top of the queue, if he is: lock the file and send back the users uuid
         #If the file is locked, check if the user exists in the queue, if he does, send back a not available message, 
-        #Other wise, create a new uuid for him, add him to the queue and 
+        #Other wise, create a new uuid for him, add him to the queue and
+        data = request.json
+        file_name = data['file_name'] 
         print('id: ', id)
         print('file name: ', file_name)
 
@@ -147,7 +149,7 @@ class read_lock_API(Resource):
             print('exit point 5')
             return jsonify(response)
                     
-    def post(self, file_name, id):
+    def post(self, id):
         '''
         post request sent when a user is releasing a lock
         '''
@@ -158,6 +160,8 @@ class read_lock_API(Resource):
             'release_successful': True/False
         }
         '''
+        data = request.json
+        file_name = data['file_name']
         file_lock = file_locks.find_one({'file_name': file_name})
         if file_lock == None:
             return post_response(id, False)
@@ -190,7 +194,7 @@ class state_API(Resource):
 
 
 api.add_resource(state_API, '/api/state')
-api.add_resource(read_lock_API, '/api/lock/<string:file_name>/<string:id>')
+api.add_resource(read_lock_API, '/api/lock/<string:id>')
 
 if __name__ == '__main__':
     db.drop_collection('file_locks')

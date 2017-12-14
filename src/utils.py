@@ -1,29 +1,62 @@
 import os
+import requests
+import json
+import errno
+import config as cf
+import shutil
+from format import format_registry_req
 
 def get_file_read(file_name, path):
     """Return contents of file with read privileges given file name and path name"""
     file_list = os.listdir(path)
-    
-    if file_name in file_list:
-        f = open(path + '/' + file_name)
-        return f.read()
+    for dir_, _, files in os.walk(path):
+        for f in files:
+            relDir = os.path.relpath(dir_, path)
+            relFile = os.path.join(relDir, f)
+            if relFile == file_name:
+                file_match = open(path + '/' + file_name)
+                return file_match.read()
        
     return None
 
 def get_file_write(file_name, path):
     """Return file with write privileges given file name and path name"""
     file_list = os.listdir(path)
-    
-    if file_name in file_list:
-        f = open(path + '/' + file_name, 'w')
-        return f
+    for dir_, _, files in os.walk(path):
+        for f in files:
+            relDir = os.path.relpath(dir_, path)
+            relFile = os.path.join(relDir, f)
+            if relFile == file_name:
+                file_match = open(path + '/' + file_name, 'w')
+                return file_match
+       
+    return None
+
        
 def update_file(file_name, path, file_content):
-    try:
-        f = open(path + '/' + file_name, 'w')
+    '''updates file, adds it if it doesnt exist''' 
+    if not os.path.exists(os.path.dirname(path+'/'+file_name)):
+        try:
+            os.makedirs(os.path.dirname(path+'/'+file_name))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+    with open(path + '/' + file_name, "w") as f:
         f.write(file_content)
-        f.close()
         return True
+    return None
+
+def add_and_get_file(file_name, path):
+    if not os.path.exists(os.path.dirname(path+'/'+file_name)):
+        try:
+            os.makedirs(os.path.dirname(path+'/'+file_name))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+    try:
+        f = open(path + '/' + file_name, "w") 
+        return f
     except:
         return None
 
@@ -37,10 +70,14 @@ def delete_file(file_name, path):
 def does_file_exist(file_name, path):
     '''returns true if file exists at given path'''
     file_list = os.listdir(path)
-    if file_name in file_list:
-        return True
+    for dir_, _, files in os.walk(path):
+        for f in files:
+            relDir = os.path.relpath(dir_, path)
+            relFile = os.path.join(relDir, f)
+            if relFile == file_name:
+                return True
     return False
-
+    
 def get_files_in_dir(directory):
     '''gets files in directory'''
     rootDir = directory
@@ -58,3 +95,21 @@ def split_path(path):
      f = path.split("/", 1)[1]
      d = path.split('/', 1)[0]
      return d, f
+
+def get_port(server_name):
+    url = format_registry_req(server_name, cf.REGISTRY_SERVER_PORT)
+    response = json.loads(requests.get(url).content.decode())
+    port = response['dir_port']
+    if str(port) == str(-1):
+        print('port returned -1')
+        return None
+    return port
+
+def clear_path(path):
+    if path == '/' or path == '':
+        return 
+    for root, dirs, files in os.walk(path, topdown=False):
+        for name in files:
+            os.remove(os.path.join(root, name))
+        for name in dirs:
+            os.rmdir(os.path.join(root, name))

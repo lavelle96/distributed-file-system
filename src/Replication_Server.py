@@ -36,8 +36,9 @@ class replication_API(Resource):
         dir_server_port = response['dir_port']
 
         #Get ports of fs's handling the same directory
-        req = format_ports_req(dir_name, dir_server_port)
-        response = json.loads(requests.get(req).content.decode())
+        file_name_data = {'file_name': file_name}
+        req = format_ports_req(dir_server_port)
+        response = json.loads(requests.get(req, data=json.dumps(file_name_data), headers=cf.JSON_HEADER).content.decode())
         ports = response['ports']
         
         data = {
@@ -49,7 +50,7 @@ class replication_API(Resource):
         for port in ports:
             if str(port) != str(fs_port):
                 print('sending request to ', port)
-                req = format_file_req(file_name, port)
+                req = format_file_req(port)
                 requests.post(req, data=json.dumps(data), headers = cf.JSON_HEADER)
                 print('request sent to, ', port)
         print('finished replication')

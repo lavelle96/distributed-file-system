@@ -19,22 +19,24 @@ ROOT_DIR = ""
 
 class File_API(Resource):
 
-    def get(self, file_name):
+    def get(self):
         '''Read file'''
+        data = request.json
+        file_name = data['file_name']
         print( 'looking for file: ', file_name, ' in ', FILE_SERVER_PATH)
-        file = get_file_read(file_name, FILE_SERVER_PATH)
-        print("Received request for " + file_name)
-        if(file == None):
+        
+        file_content = get_file_read(file_name, FILE_SERVER_PATH)
+        if(file_content == None):
             abort(404)
         else:
-            print("Sending back the following content: ", file)
+            print("Sending back the following content: ", file_content)
             response = {
                 "file_name": file_name,
-                "file_content": file
+                "file_content": file_content
                 }
             return response
     
-    def post(self, file_name):
+    def post(self):
         '''write to file
         request format:
         {
@@ -42,6 +44,8 @@ class File_API(Resource):
             file_content:
             replicate: (if replicate = true send request onto the replication server)
         }'''
+        content = request.json
+        file_name = content['file_name']
         file = get_file_write(file_name, FILE_SERVER_PATH)
         print("Received request for " + file_name)
         if(file == None):
@@ -99,7 +103,7 @@ class state_API(Resource):
 
 
 api.add_resource(state_API, '/api/state')
-api.add_resource(File_API, '/api/files/<string:file_name>', endpoint = 'file')
+api.add_resource(File_API, '/api/file', endpoint = 'file')
 
 if __name__ == '__main__':
     
@@ -121,16 +125,9 @@ if __name__ == '__main__':
     response = json.loads(requests.get(dir_port_url).content.decode())
     dir_server_port = response['dir_port']
 
-    file_paths = get_files_in_dir(FILE_SERVER_PATH)
-    dir_name = split_path(file_paths[0])[0]
-    ROOT_DIR = dir_name
-    FILE_SERVER_PATH  = FILE_SERVER_PATH + '/' + dir_name
-    file_names = []
-    for f in file_paths:
-        file_name = split_path(f)[1]
-        file_names.append(file_name)
+    file_names = get_files_in_dir(FILE_SERVER_PATH)
+    
     data = {
-        'dir_name': dir_name,
         'file_names': file_names
     }
     #Send batch of files

@@ -5,7 +5,7 @@ from format import format_file_req, format_registry_req
 import config as cf
 import json
 
-file_name = '1.1'
+file_name = 'D1\1.1'
 file_content = 'Test generated content for file ' + file_name
 dir_port_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
 response = json.loads(requests.get(dir_port_url).content.decode())

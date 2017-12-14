@@ -13,8 +13,9 @@ db = client.dir_db
 file_map = db.file_map
 '''
 {
-    'name':
-    'dir':
+    'file_name':
+    'num_nodes:
+    'ports':
 }   
 '''
 dir_map = db.dir_map
@@ -27,7 +28,7 @@ active_nodes = db.active_nodes
 '''
 {
     'port':
-    'dir':
+    'files': []
     'load':
     
 }
@@ -38,23 +39,28 @@ api = Api(app)
 
 
 class Directory_API(Resource):
-    def get(self, file_name):
+    '''Api used to get the port of a specific file'''
+    def get(self):
+        data = request.json
+        file_name = data['file_name']
+        print('request for ', file_name, ' received')
+        print('available files: ')
+        for f in file_map.find():
+            print(f)
+        f = file_map.find_one({'file_name': file_name})
+        if f == None or f['num_nodes'] == 0:
+            abort(404)
+        ports = f['ports']
         
-        f = file_map.find_one({'name': file_name})
-        if f == None:
-            abort(404)
-        file_dir = f['dir']
-        d = dir_map.find_one({'name': file_dir})
-        if d['num_nodes'] == 0:
-            abort(404)
-
-        nodes = active_nodes.find({'dir': file_dir})
+        #Return least loaded port
         min_load = None
         port = 0
-        for node in nodes:
+        for p in ports:
+            node = active_nodes.find_one({'port': p})
             if min_load == None or node['load'] < min_load:
                 min_load = node['load']
                 port = node['port']
+
 
         active_nodes.update_one(
             {'port': port},
@@ -64,11 +70,12 @@ class Directory_API(Resource):
                 }
             }
         )
-
         response = {
             'file_server_port': port
         }
         return jsonify(response)
+
+
 
 class Node_Init_API(Resource):
 
@@ -77,7 +84,6 @@ class Node_Init_API(Resource):
         Allows file servers to post the name of their directory and all the files contained in it
         request data:
         data={
-            dir_name:
             file_names:[]
         }
         '''
@@ -85,54 +91,54 @@ class Node_Init_API(Resource):
             abort(400)
         data = request.json
         print('new node up and running, data: ', data)
-        dir_name = data['dir_name']
+        file_names = data['file_names']
         new_node = {
             'port': port_number,
-            'dir': dir_name,
+            'file_names': file_names,
             'load': 0
         }
-        active_nodes.insert_one(new_node)
-        file_names = data['file_names']
-        dir_info = dir_map.find_one({'name': dir_name})
-        if dir_info == None:
-            #Create directory
-            new_dir = {
-                'name': dir_name,
-                'num_nodes': 1,
-                'ports': [port_number]
-            }
-            dir_map.insert_one(new_dir)
-            for f in file_names:
+        active_nodes.update_one({
+            'port': port_number},
+            {
+                '$set':new_node
+            },
+            upsert=True
+        )
+        for f in file_names:
+            db_file = file_map.find_one({'file_name': f})
+            if db_file:
+                ports = db_file["ports"]
+                ports.append(port_number)
+                file_map.update_one(
+                    {'file_name': f},
+                    {
+                        '$inc':{
+                            'num_nodes': 1
+                        },
+                        '$set':{
+                            'ports': ports
+                        }
+                    }
+                )
+            else:
                 new_file = {
-                    'name': f,
-                    'dir': dir_name
+                    'file_name': f,
+                    'ports': [port_number],
+                    'num_nodes': 1
                 }
                 file_map.insert_one(new_file)
-        else:
-            #Add port as a node on that directory
-            port_list = dir_info['ports']
-            port_list.append(port_number)
-            num_nodes = dir_info['num_nodes']
-            num_nodes +=1
-
-            dir_map.update_one(
-                {'name': dir_name},
-                {
-                    '$set':{
-                        'ports': port_list,
-                        'num_nodes': num_nodes
-                    }
-                }
-            )
+                
 
 
-
-class dir_ports_API(Resource):
-    def get(self, directory):
-        d = dir_map.find_one({'name': directory})
+class file_ports_API(Resource):
+    '''Api that gives back the ports that a given file is stored on'''
+    def get(self):
+        data = request.json
+        file_name = data['file_name']
+        d = file_map.find_one({'file_name': file_name})
         ports = d['ports']
         response = {
-            'dir_name': directory,
+            'file_name': file_name,
             'ports': ports
         }
         return jsonify(response)
@@ -153,12 +159,24 @@ class state_API(Resource):
         }
         return response
 
+class get_files_API(Resource):
+    '''Api that gets all files that the directory server knows of'''
+    def get(self):
+        files = file_map.find()
+        file_list = []
+        for f in files:
+            file_list.append(f['file_name'])
+        response = {
+            'file_list': file_list
+        }
+        return response
 
 
 api.add_resource(state_API, '/api/state')
-api.add_resource(Directory_API, '/api/files/<string:file_name>', endpoint = 'file')
+api.add_resource(Directory_API, '/api/file', endpoint = 'file')
 api.add_resource(Node_Init_API, '/api/node/<string:port_number>', endpoint = 'node')
-api.add_resource(dir_ports_API, '/api/ports/<string:directory>')
+api.add_resource(file_ports_API, '/api/ports')
+api.add_resource(get_files_API, '/api/files')
 
 if __name__ == '__main__':
     db.drop_collection('file_map')
