@@ -1,9 +1,9 @@
 from flask import Flask, make_response, request
 from flask_restful import inputs, reqparse, Api, fields, marshal, Resource, abort
 import requests
-from utils import get_file_read, get_file_write, get_files_in_dir, split_path, get_port
+from utils import get_file_read, get_file_write, get_files_in_dir, split_path, get_port, update_file, delete_file, does_file_exist
 import sys
-from format import format_node_req, format_registry_req, format_replication_req, format_node_req
+from format import format_node_req, format_registry_req, format_replication_req, format_file_req
 import json
 import config as cf
 
@@ -43,46 +43,79 @@ class File_API(Resource):
             file_name:
             file_content:
             replicate: (if replicate = true send request onto the replication server)
+            new_file:
         }'''
+        
         content = request.json
         file_name = content['file_name']
+        new_file = content['new_file']
         file = get_file_write(file_name, FILE_SERVER_PATH)
         print("Received request for " + file_name)
-        if(file == None):
+        if(file == None and new_file == False):
             abort(404)
         else:
-            content = request.json
-            print("Content received: ", content)
-            if(content != None and request.is_json):
+            
+            file_content = content["file_content"]
+            if new_file == True:
+                print("Creating new file")
+                try:
+                    update_file(file_name, FILE_SERVER_PATH, file_content)
+                    #Send alert to dir server
+                    dir_port = get_port('dir_server')
+                    req = format_file_req(dir_port)
+                    data = {
+                        'file_name': file_name,
+                        'file_server_port': str(SERVER_PORT)
+                    }
+                    requests.post(req, data = json.dumps(data), headers=cf.JSON_HEADER)
+
+                except:
+                    print('Creation failed')
+                    return
+            else:
                 print("Performing write")
                 try:
-                    file.write(content["file_content"])
+                    file.write(file_content)
                 except:
                     print('write failed')
                     return
-                response = {
-                    "status": "Success"
+            response = {
+                "status": "Success"
+            }
+            
+            if content['replicate'] == True:
+                print('replicating write')
+                #Find replication port
+                rep_port_url = format_registry_req('rep_server', cf.REGISTRY_SERVER_PORT)
+                response = json.loads(requests.get(rep_port_url).content.decode())
+                rep_server_port = response['dir_port']
+                #Send post onto replication server
+                req = format_replication_req(rep_server_port)
+                data = {
+                    'file_name': file_name,
+                    'file_content': content['file_content'],
+                    'fs_port': str(SERVER_PORT),
+                    'new_file': new_file
                 }
-                
-                if content['replicate'] == True:
-                    print('replicating write')
-                    #Find replication port
-                    rep_port_url = format_registry_req('rep_server', cf.REGISTRY_SERVER_PORT)
-                    response = json.loads(requests.get(rep_port_url).content.decode())
-                    rep_server_port = response['dir_port']
-                    #Send post onto replication server
-                    req = format_replication_req(rep_server_port)
-                    data = {
-                        'file_name': file_name,
-                        'file_content': content['file_content'],
-                        'dir_name': ROOT_DIR,
-                        'fs_port': SERVER_PORT
-                    }
-                    requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER)
+                requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER)
 
-                return response
-            else:
-                print("Request data is none")
+            return response
+            
+        
+    def delete(self):
+        """
+        {file_name:}
+        """
+        data = request.json
+        file_name = data['file_name']
+        if does_file_exist(file_name, FILE_SERVER_PATH):
+            try:
+                delete_file(file_name, FILE_SERVER_PATH)
+            except:
+                print('Unable to delete file')
+                abort(409)
+
+
             
         
 class state_API(Resource):
@@ -139,15 +172,16 @@ if __name__ == '__main__':
     except:
         print('No directory port up yet')
         sys.exit()
+
+    #Get files supported by file server
     file_names = get_files_in_dir(FILE_SERVER_PATH)
-    
     data = {
         'file_names': file_names
     }
+
     #Send batch of files
-  
     url = format_node_req(SERVER_PORT, dir_server_port)
-    requests.post(url, data=json.dumps(data), headers= cf.JSON_HEADER).content.decode()
+    requests.post(url, data=json.dumps(data), headers= cf.JSON_HEADER)
     
     app.run(host= '0.0.0.0', port = SERVER_PORT, debug = False)
     print("File server node running on port: ", SERVER_PORT)

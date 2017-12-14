@@ -18,12 +18,7 @@ file_map = db.file_map
     'ports':
 }   
 '''
-dir_map = db.dir_map
-'''{
-    'name':
-    'num_nodes':
-    'ports':
-}'''
+
 active_nodes = db.active_nodes
 '''
 {
@@ -74,6 +69,62 @@ class Directory_API(Resource):
             'file_server_port': port
         }
         return jsonify(response)
+
+    def post(self):
+        '''
+        Endpoint for creating file
+        {
+            'file_name':
+            'file_server_port':
+        }
+        '''
+        data = request.json
+        file_name = data['file_name']
+        file_server_port = data['file_server_port']
+
+        print('')
+        db_node = active_nodes.find_one({'port': file_server_port})
+        if not db_node:
+            print('Server isnt registered: ', file_server_port)
+            return
+      
+        db_file = file_map.find_one({'file_name': file_name})
+        if db_file:
+            print('file already exists, updating db')
+            ports = db_file["ports"]
+            ports.append(file_server_port)
+            file_map.update_one(
+                {'file_name': file_name},
+                {
+                    '$inc':{
+                        'num_nodes': 1
+                    },
+                    '$set':{
+                        'ports': ports
+                    }
+                }
+            )
+        else:
+            
+            new_file = {
+                'file_name': file_name,
+                'ports': [file_server_port],
+                'num_nodes': 1
+            }
+            file_map.insert_one(new_file)
+
+        file_list = db_node['file_names']
+        file_list.append(file_name)
+        active_nodes.update_one(
+            {'port': file_server_port},
+            {
+                '$set':{
+                    'file_names': file_list
+                }
+            }
+        )
+        
+        
 
 
 
@@ -203,7 +254,6 @@ api.add_resource(get_files_API, '/api/files')
 
 if __name__ == '__main__':
     db.drop_collection('file_map')
-    db.drop_collection('dir_map')
     db.drop_collection('active_nodes')
 
     server_port = int(sys.argv[1])

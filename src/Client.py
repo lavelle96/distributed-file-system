@@ -9,7 +9,7 @@ def print_help():
     print('read <file name> (reads a the file if available)')
     print('write <file name> (reads file with write privileges)')
     print('delete <file name> (deletes file)')
-    print('create <file name> (creates file)')
+    print('create <file name> (creates empty file)')
     print('quit (exits program)')
 
 if __name__ == '__main__':
@@ -43,6 +43,7 @@ if __name__ == '__main__':
         elif command == 'create':
             #Create file
             file_name = user_input[1]
+            Lib.create_file(file_name)
             pass
         elif command == 'delete':
             #Delete file

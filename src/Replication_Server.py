@@ -16,7 +16,7 @@ class replication_API(Resource):
         data={
             file_name:
             file_content:
-            dir_name:
+            new_file:
             fs_port:
         }
         '''
@@ -25,10 +25,11 @@ class replication_API(Resource):
             abort(400)
         data = request.json
        
-        dir_name = data['dir_name']
+        
         fs_port = data['fs_port']
         file_name = data['file_name']
         file_content = data['file_content']
+        new_file = data['new_file']
 
         #Get directory server port number
         dir_port_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
@@ -44,7 +45,8 @@ class replication_API(Resource):
         data = {
             'file_name': file_name,
             'file_content': file_content,
-            'replicate': False
+            'replicate': False,
+            'new_file': new_file
         }
         print('request to replicate received from ', fs_port)
         for port in ports:

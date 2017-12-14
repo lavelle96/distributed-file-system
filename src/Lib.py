@@ -111,7 +111,8 @@ def write_file(file_name):
     data = {
         "file_name": file_name,
         "file_content": file_content,
-        "replicate": True
+        "replicate": True,
+        "new_file": False
     }
     headers = cf.JSON_HEADER
     response = requests.post(url, data = json.dumps(data), headers = headers)
@@ -123,10 +124,22 @@ def write_file(file_name):
     url = format_file_req(cache_port)
     response = requests.post(url, json.dumps(data), headers=headers)
 
-def create_file(filename):
+def create_file(file_name):
     """
     Creates file
     """
+    file_server = get_port('file_server')
+    data = {
+        "file_name": file_name,
+        'file_content': " ",
+        'replicate': True,
+        'new_file': True
+    }
+    req = format_file_req(file_server)
+    requests.post(req, data = json.dumps(data), headers=cf.JSON_HEADER)
+
+
+
 
 def delete_file(filename):
     """

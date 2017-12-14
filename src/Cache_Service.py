@@ -20,7 +20,6 @@ file_timestamps = db.file_timestamps
 }
 '''
 
-#TODO: Doesnt allow folder control (see cache folders)
 
 app = Flask(__name__)
 api = Api(app)
