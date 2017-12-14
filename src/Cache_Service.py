@@ -16,6 +16,7 @@ file_timestamps = db.file_timestamps
 '''
 {
     'file_name':
+    'file_version':
     'timestamp':
 }
 '''

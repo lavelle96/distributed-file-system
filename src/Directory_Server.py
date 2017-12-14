@@ -16,7 +16,7 @@ file_map = db.file_map
     'file_name':
     'num_nodes:
     'ports':
-    'version':
+    'file_version':
 }   
 '''
 
@@ -39,10 +39,6 @@ class Directory_API(Resource):
     def get(self):
         data = request.json
         file_name = data['file_name']
-        print('request for ', file_name, ' received')
-        print('available files: ')
-        for f in file_map.find():
-            print(f)
         f = file_map.find_one({'file_name': file_name})
         if f == None or f['num_nodes'] == 0:
             abort(404)
@@ -117,7 +113,8 @@ class Directory_API(Resource):
                 new_file = {
                     'file_name': file_name,
                     'ports': [file_server_port],
-                    'num_nodes': 1
+                    'num_nodes': 1,
+                    'file_version': 1
                 }
                 print('inserting new file: ', file_name)
                 file_map.insert_one(new_file)
@@ -135,8 +132,17 @@ class Directory_API(Resource):
                 )  
         #Update file
         else:
-            #Replicate update across other nodes
             d = file_map.find_one({'file_name': file_name})
+            #increment file version
+            file_map.update_one(
+                {'file_name': file_name},
+                {
+                    '$inc':{
+                        'file_version': 1
+                    }
+                }
+            )
+            #Replicate update across other nodes
             ports = d['ports']
             data = {
                 'file_name': file_name,
@@ -239,7 +245,8 @@ class Node_State_API(Resource):
                 new_file = {
                     'file_name': f,
                     'ports': [port_number],
-                    'num_nodes': 1
+                    'num_nodes': 1,
+                    'file_version': 1
                 }
                 file_map.insert_one(new_file)
                 

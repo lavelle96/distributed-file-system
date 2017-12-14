@@ -39,9 +39,14 @@ def read_file(file_name):
 
         #Get file server port
         url = format_file_req(dir_port)
-        response =  json.loads(requests.get(url, data=json.dumps(file_name_data), headers=cf.JSON_HEADER).content.decode())
-        file_server_port = response['file_server_port']
+        try:
+            response =  json.loads(requests.get(url, data=json.dumps(file_name_data), headers=cf.JSON_HEADER).content.decode())
+            file_server_port = response['file_server_port']
 
+        except:
+            print('file doesnt exist')
+            return
+        
         #Get file from file server
         url = format_file_req(file_server_port)
         response =  json.loads(requests.get(url, data=json.dumps(file_name_data), headers=cf.JSON_HEADER).content.decode())
