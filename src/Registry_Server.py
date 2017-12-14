@@ -20,6 +20,7 @@ directories = db.directories
     dir_load: (used to decide which file server will handle the request)
 }
 '''
+CHECK_FREQUENCY = 8 #seconds
 
 def thread_node_check():
     while(1):
@@ -40,7 +41,7 @@ def thread_node_check():
                 #delete server from directory
                 directories.delete_one({'dir_port': port})
 
-        time.sleep(3)
+        time.sleep(CHECK_FREQUENCY)
 
 def get_response(port, dir_name):
     response = {

@@ -68,6 +68,7 @@ class Directory_API(Resource):
         response = {
             'file_server_port': port
         }
+        print('reponse: ', response)
         return jsonify(response)
 
     def post(self):
@@ -123,6 +124,39 @@ class Directory_API(Resource):
                 }
             }
         )
+    def delete(self):
+        """
+        Used to delete a file from the database
+        {
+            'file_name':
+            'file_server_port':
+        }
+        """
+        data = request.json
+        file_name = data['file_name']
+        file_server_port = data['file_server_port']
+        db_f = file_map.find_one({'file_name': file_name})
+        ports = db_f['ports']
+        data = {
+            'file_name': False,
+            'replicate': False
+        }
+        for p in ports:
+            if str(p) != str(file_server_port):
+                req = format_file_req(p)
+                requests.delete(req, data=json.dumps(data), headers=cf.JSON_HEADER)
+                db_s = active_nodes.find_one({'port': p})
+                file_names = db_s['file_names']
+                file_names.remove(file_name)
+                file_map.update_one(
+                    {'port': p},
+                    {
+                        '$set':{'file_names': file_names}
+                    }
+                )
+        file_map.delete_one({'file_name': file_name})
+            
+
         
         
 
@@ -246,11 +280,12 @@ class get_files_API(Resource):
         return response
 
 
-api.add_resource(state_API, '/api/state')
 api.add_resource(Directory_API, '/api/file', endpoint = 'file')
 api.add_resource(Node_State_API, '/api/node/<string:port_number>', endpoint = 'node')
 api.add_resource(file_ports_API, '/api/ports')
 api.add_resource(get_files_API, '/api/files')
+api.add_resource(state_API, '/api/state')
+
 
 if __name__ == '__main__':
     db.drop_collection('file_map')

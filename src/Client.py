@@ -48,6 +48,7 @@ if __name__ == '__main__':
         elif command == 'delete':
             #Delete file
             file_name = user_input[1]
+            Lib.delete_file(file_name)
             pass
         elif command == 'quit':
             break

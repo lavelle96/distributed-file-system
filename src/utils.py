@@ -4,7 +4,7 @@ import json
 import errno
 import config as cf
 import shutil
-from format import format_registry_req
+from format import format_registry_req, format_file_req
 
 def get_file_read(file_name, path):
     """Return contents of file with read privileges given file name and path name"""
@@ -114,3 +114,12 @@ def clear_path(path):
             os.remove(os.path.join(root, name))
         for name in dirs:
             os.rmdir(os.path.join(root, name))
+
+def get_file_port(file_name, dir_server_port):
+    req = format_file_req(dir_server_port)
+    data = {
+        'file_name': file_name
+    }
+    resp = json.loads(requests.get(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    port = resp['file_server_port']
+    return port

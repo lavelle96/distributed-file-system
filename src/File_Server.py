@@ -104,16 +104,30 @@ class File_API(Resource):
         
     def delete(self):
         """
-        {file_name:}
+        {
+            file_name:
+            replicate: 
+        }
         """
         data = request.json
         file_name = data['file_name']
+        replicate = data['replicate']
         if does_file_exist(file_name, FILE_SERVER_PATH):
             try:
                 delete_file(file_name, FILE_SERVER_PATH)
+                #Alert dir server
+                if replicate == True:
+                    dir_port = get_port('dir_server')
+                    req = format_file_req(dir_port)
+                    data = {
+                        'file_name': file_name,
+                        'file_server_port': str(SERVER_PORT)
+                        }
+                    requests.delete(req, data = json.dumps(data), headers = cf.JSON_HEADER)
             except:
                 print('Unable to delete file')
                 abort(409)
+
 
 
             

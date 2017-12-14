@@ -1,6 +1,6 @@
 import requests
 from format import format_file_req, format_lock_req, format_registry_req, format_show_files
-from utils import get_file_read, split_path, get_port, add_and_get_file
+from utils import get_file_read, split_path, get_port, add_and_get_file, get_file_port
 import json
 import config as cf
 import os
@@ -129,6 +129,7 @@ def create_file(file_name):
     Creates file
     """
     file_server = get_port('file_server')
+    check_port(file_server)
     data = {
         "file_name": file_name,
         'file_content': " ",
@@ -141,18 +142,30 @@ def create_file(file_name):
 
 
 
-def delete_file(filename):
+def delete_file(file_name):
     """
     Deletes file
     """
+    dir_server_port = get_port('dir_server')
+    check_port(dir_server_port)
+    file_port = get_file_port(file_name, dir_server_port)
+    req = format_file_req(file_port)
+    data = {
+        'file_name': file_name,
+        'replicate': True
+    }
+    try:
+        requests.delete(req, data=json.dumps(data), headers=cf.JSON_HEADER)
+    except:
+        print('unable to delete file')
+    
+
 
 def show():
     '''
     Shows files available
     '''
-    dir_url = format_registry_req('dir_server', cf.REGISTRY_SERVER_PORT)
-    response = json.loads(requests.get(dir_url).content.decode())
-    dir_port = response['dir_port']
+    dir_port = get_port('dir_server')
     check_port(dir_port)
 
     show_url = format_show_files(dir_port)
