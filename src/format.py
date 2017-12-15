@@ -1,3 +1,4 @@
+'''Provides functions for formatting api requests'''
 def format_file_req(port_number):
     url = 'http://localhost:' + str(port_number) + '/api/file' 
     return url
@@ -33,5 +34,15 @@ def format_state_request(server_port):
 def format_version_req(dir_server_port):
     url = 'http://localhost:' + str(dir_server_port) + '/api/version'
     return url
-    
-  
+
+def format_admin_req(auth_server_port):
+    url = 'http://localhost:' + str(auth_server_port) + '/api/admin'
+    return url
+
+def format_login_req(auth_server_port):
+    url = 'http://localhost:' + str(auth_server_port) + '/api/login'
+    return url
+
+def format_users_req(auth_server_port):
+    url = 'http://localhost:' + str(auth_server_port) + '/api/users'
+    return url
