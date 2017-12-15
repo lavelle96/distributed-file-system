@@ -15,7 +15,7 @@ def print_help():
 if __name__ == '__main__':
     username = input('Enter username: ')
     password = input('Enter password: ')
-    if Lib.user_login(username):
+    if Lib.user_login(username, password):
         print('Login successfull')
     else:
         print('Incorrect credentials, program closing')
