@@ -1,5 +1,5 @@
 import requests
-from format import format_file_req, format_lock_req, format_registry_req, format_show_files
+from format import format_file_req, format_lock_req, format_registry_req, format_show_files, format_admin_req, format_login_req, format_users_req
 from utils import get_file_read, split_path, get_port, add_and_get_file, get_file_port
 import json
 import config as cf
@@ -190,3 +190,62 @@ def show():
     print('available files:')
     for f in file_list:
         print(f)
+
+def user_login(username, password):
+    '''
+    returns true if login is successful
+    '''
+    auth_port = get_port('auth_server')
+    req = format_login_req(auth_port)
+    data = {
+        'username': username,
+        'password': password
+    }
+    response = json.loads(requests.get(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    return response['valid_user']
+
+def admin_login(admin_username, admin_password):
+    '''
+    returns true if login is successful
+    '''
+    auth_port = get_port('auth_server')
+    req = format_admin_req(auth_port)
+    data = {
+        'admin_username': admin_username,
+        'admin_password': admin_password
+    }
+    response = json.loads(requests.get(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    return response['valid_admin']
+
+def add_user(admin_username, admin_password, new_username, new_password, new_privilege):
+    '''
+    adds user to db if admin cred are accurate
+    '''
+    auth_port = get_port('auth_server')
+    req = format_admin_req(auth_port)
+    data = {
+        'admin_username': admin_username,
+        'admin_password': admin_password,
+        'new_username': new_username,
+        'new_password': new_password,
+        'new_privilege': new_privilege
+    }
+    response = json.loads(requests.post(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    return response['success']
+
+def show_users(admin_username, admin_password):
+    '''
+    prints existing users if admin credentials are accurate
+    '''
+    auth_port = get_port('auth_server')
+    req = format_users_req(auth_port)
+    data = {
+        'admin_username': admin_username,
+        'admin_password': admin_password
+    }
+    response = json.loads(requests.get(req, data=json.dumps(data), headers=cf.JSON_HEADER).content.decode())
+    user_list = response['user_list']
+    print('Users:')
+    for u in user_list:
+        print(u)
+

@@ -13,6 +13,15 @@ def print_help():
     print('quit (exits program)')
 
 if __name__ == '__main__':
+    username = input('Enter username: ')
+    password = input('Enter password: ')
+    if Lib.user_login(username):
+        print('Login successfull')
+    else:
+        print('Incorrect credentials, program closing')
+        sys.exit()
+
+
     print_help()
     while(1):
 
