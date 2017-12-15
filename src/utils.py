@@ -61,6 +61,7 @@ def add_and_get_file(file_name, path):
         return None
 
 def delete_file(file_name, path):
+    '''Deletes file at path'''
     try:
         os.remove(path + '/' + file_name)
         return True

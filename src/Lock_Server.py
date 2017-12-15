@@ -21,14 +21,6 @@ file_locks = db.file_locks
 app = Flask(__name__)
 api = Api(app)
 
-#TODO: clean up code for get lock, if possible
-
-#Two dicts: 
-#one for mapping the file name to whether or not it's locked
-#Another for mapping the filename to a queue where the first uuid in the queue is the person who has it locked and 
-#the following uuids are the next in line
-
-
 #api
 #***Users ids will be needed to unlock the lock on a file***
 #Get to get lock (lock the lock)
